@@ -18,4 +18,7 @@ public class ChatPacket implements java.io.Serializable{
 	public String password;
 	public String success;
 	byte[] data;
+	
+	byte[] dhParameters;
+	byte[] signature;
 }
