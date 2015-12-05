@@ -28,9 +28,11 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Crypto {
 	
@@ -81,8 +83,10 @@ public class Crypto {
 			PublicKey pk = kf.generatePublic(x509Spec);
 			ka.doPhase(pk, true); //TODO: Test if I can just pass otherPHPublicKey without X509Spec
 			
-			//generate shared AES key
-			sharedSecretKey = ka.generateSecret("AES");
+			//generate valid shared AES key
+			byte[] secret = ka.generateSecret();
+			sharedSecretKey = new SecretKeySpec(secret, 0, 16, "AES");
+		
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeyException e) {
@@ -212,4 +216,9 @@ public class Crypto {
 		}
 		return null;
 	}	
+	
+	//TESTING
+	public SecretKey getSecretKey() {
+		return sharedSecretKey;
+	}
 }
