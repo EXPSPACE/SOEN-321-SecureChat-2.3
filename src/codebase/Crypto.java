@@ -1,12 +1,23 @@
 package codebase;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -63,13 +74,38 @@ public class Crypto {
 	/** CERTIFICATES **/
 	//methods for accessing certificate private/public keys 
 
-//	public static PublicKey loadCertificatePublicKey(String filepath) {
-//		
-//	}
-//	
-//	public static PrivateKey loadCertificatePrivateKey(String filepath) {
-//		
-//	}
+	public static RSAPublicKey getCertificatePublicKey(String filepath) {
+		try {
+			FileInputStream fis = new FileInputStream(filepath);
+			CertificateFactory cf = CertificateFactory.getInstance("X.509");
+			Certificate cert = cf.generateCertificate(fis);
+			return (RSAPublicKey) cert.getPublicKey();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (CertificateException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	
+	public static RSAPrivateKey getCertificatePrivateKey(String filepath) {
+		
+		//TODO get encoded private key from filepath (is key encrypted?)
+		byte[] encodedKey = null;
+		
+		try {
+			KeyFactory kf = KeyFactory.getInstance("RSA");
+			KeySpec keySpec = new PKCS8EncodedKeySpec(encodedKey);
+			return (RSAPrivateKey) kf.generatePrivate(keySpec);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
 	
 	/** AES CIPHER **/
 	//symmetric key cryptography methods for encrypting/decrypting exchanged messages
