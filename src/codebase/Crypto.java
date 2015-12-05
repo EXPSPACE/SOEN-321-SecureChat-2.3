@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -18,12 +20,16 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyAgreement;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 
 public class Crypto {
@@ -31,22 +37,64 @@ public class Crypto {
 	private String connection;
 	private RSAPublicKey certPublicKey;   // public key of connection
 	private RSAPrivateKey certPrivateKey; // self private key
-	//private DHKeyPair dhKeyPair
+	private KeyPair dhKeyPair;
 	private SecretKey sharedSecretKey;    //message enc/dec key
 	
 	/** DIFFIE-HELLMAN **/
 	//asymmetric key cryptography methods for generating diffie-hellman public/private key pairs
 	
-//	public static KeyPair generateDHKeyPair() {
-//		
-//	}
-//	 
-//	public static SecretKey generateSharedSecretKey(Dhpublic otherskey) {
-//		sharedSecretKey = ...
-//	}
-//	
+	public void genClientDHKeyPair() {
+		try {
+			KeyPairGenerator keyGenerator = KeyPairGenerator.getInstance("DH");
+			keyGenerator.initialize(1024);
+			dhKeyPair = keyGenerator.genKeyPair();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+	}
 	
+	public void genServerDHKeyPair(PublicKey otherDHPublicKey) {
+		DHParameterSpec dhSpec = new DHParameterSpec(
+				((DHPublicKey)otherDHPublicKey).getParams().getP(), 
+				((DHPublicKey)otherDHPublicKey).getParams().getG(), 
+				((DHPublicKey)otherDHPublicKey).getParams().getL());	
+		try {
+			KeyPairGenerator keyGenerator = KeyPairGenerator.getInstance("DH");
+			keyGenerator.initialize(dhSpec);
+			dhKeyPair = keyGenerator.genKeyPair();
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			e.printStackTrace();
+		}
+	}
+	 
+	public void genSharedSecretAESKey(PublicKey otherDHPublicKey) {
+		try {
+			//initialize with your own private key
+			KeyAgreement ka = KeyAgreement.getInstance("DH");
+			ka.init(dhKeyPair.getPrivate()); 		
+			
+			//initialize with other persons public key
+			KeyFactory kf = KeyFactory.getInstance("DH");
+			X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(otherDHPublicKey.getEncoded()); 
+			PublicKey pk = kf.generatePublic(x509Spec);
+			ka.doPhase(pk, true); //TODO: Test if I can just pass otherPHPublicKey without X509Spec
+			
+			//generate shared AES key
+			sharedSecretKey = ka.generateSecret("AES");
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			e.printStackTrace();
+		}		
+	}
 	
+	public PublicKey getDHPublicKey() {
+		return dhKeyPair.getPublic();
+	}
 	
 	/** SIGNATURES **/
 	//methods using SHA-256 with RSA to sign/verify the diffie-hellman public key
@@ -112,7 +160,6 @@ public class Crypto {
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

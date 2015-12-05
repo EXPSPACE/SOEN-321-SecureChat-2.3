@@ -1,5 +1,7 @@
 package codebase;
 
+import java.security.PublicKey;
+
 /**
  * ChatPacket defines the data structure with which all the network packets are organized.
  * You can replace it with your own one(s).
@@ -17,9 +19,10 @@ public class ChatPacket implements java.io.Serializable{
 	public String uid;
 	public String password;
 	public String success;
-	byte[] data;
 	
-	byte[] dhPublicKey; //diffie-hellman public key parameter
-	byte[] signature;
-	byte[] iv;
+	
+	public byte[] data;	
+	public PublicKey dhPublicKey; //diffie-hellman public key 
+	public byte[] signature;
+	public byte[] iv;
 }
