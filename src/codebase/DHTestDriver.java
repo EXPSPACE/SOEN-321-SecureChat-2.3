@@ -38,8 +38,8 @@ public class DHTestDriver {
 		
 		byte[] testMessage = "This is an ecryptable test message".getBytes();
 		
-		testMessage = clientCrypto.getEncryptedMessage(testMessage);
-		testMessage = serverCrypto.getDecryptedMessage(testMessage, new byte[16]);
+		testMessage = clientCrypto.getEncryptedMsg(testMessage);
+		testMessage = serverCrypto.getDecryptedMsg(testMessage, new byte[16]);
 		
 		System.out.println(new String(testMessage));
 	}

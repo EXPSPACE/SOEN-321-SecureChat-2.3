@@ -1,5 +1,6 @@
 package codebase;
 
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.security.InvalidAlgorithmParameterException;
@@ -43,7 +44,7 @@ public class Crypto {
 	private SecretKey sharedSecretKey;    //message enc/dec key
 	
 	/** DIFFIE-HELLMAN **/
-	//asymmetric key cryptography methods for generating diffie-hellman public/private key pairs
+	//methods for generating diffie-hellman public/private key pairs and performing key exchange
 	
 	public void genClientDHKeyPair() {
 		try {
@@ -138,11 +139,11 @@ public class Crypto {
 	/** CERTIFICATES **/
 	//methods for accessing certificate private/public keys 
 
-	public void loadCertificatePublicKey(String filepath) {
+	public void loadCertPublicKey(String filepath) {
 		try {
-			FileInputStream fis = new FileInputStream(filepath);
-			CertificateFactory cf = CertificateFactory.getInstance("X.509");
-			Certificate cert = cf.generateCertificate(fis);
+			FileInputStream fInputStream = new FileInputStream(filepath);
+			CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+			Certificate cert = certFactory.generateCertificate(fInputStream);
 			certPublicKey = (RSAPublicKey) cert.getPublicKey();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -152,7 +153,7 @@ public class Crypto {
 	}
 	
 	
-	public void loadCertificatePrivateKey(String filepath) {
+	public void loadCertPrivateKey(String filepath) {
 		
 		//TODO get encoded private key from filepath (is key encrypted?)
 		byte[] encodedKey = null;
@@ -171,7 +172,7 @@ public class Crypto {
 	/** AES CIPHER **/
 	//symmetric key cryptography methods for encrypting/decrypting exchanged messages
 	
-	public byte[] getEncryptedMessage(byte[] message) {
+	public byte[] getEncryptedMsg(byte[] message) {
 		Cipher cipher;
 		byte[] iv = new byte[16]; //TODO : Generate unique iv each time message is encrypted (prevents replay attacks?)
 		try {
@@ -195,7 +196,7 @@ public class Crypto {
 	}
 	
 	
-	public byte[] getDecryptedMessage(byte[] message, byte[] iv) {
+	public byte[] getDecryptedMsg(byte[] message, byte[] iv) {
 		Cipher cipher;
 		try {
 			cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
