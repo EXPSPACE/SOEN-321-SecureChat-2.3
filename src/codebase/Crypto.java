@@ -3,6 +3,8 @@ package codebase;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -35,11 +37,13 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.apache.commons.ssl.PKCS8Key;
+
 public class Crypto {
 	
 	private String connection;
-	private RSAPublicKey certPublicKey;   // public key of connection
-	private RSAPrivateKey certPrivateKey; // self private key
+	private RSAPublicKey rsaPublicKey;   // public key of connection
+	private RSAPrivateKey rsaPrivateKey; // self private key
 	private KeyPair dhKeyPair;
 	private SecretKey sharedSecretKey;    //message enc/dec key
 	
@@ -107,7 +111,7 @@ public class Crypto {
 	public byte[] getSignature(byte[] data) {
 		try {
 			Signature sig = Signature.getInstance("SHA256withRSA"); //set algorithm
-			sig.initSign(certPrivateKey);  //set private key to sign
+			sig.initSign(rsaPrivateKey);  //set private key to sign
 			sig.update(data); //set data to sign
 			return sig.sign(); //return signature	
 		} catch (NoSuchAlgorithmException e) {
@@ -123,7 +127,7 @@ public class Crypto {
 	public boolean verifySignature(byte[] signature, byte[] data) {
 		try {
 			Signature sig = Signature.getInstance("SHA256withRSA"); //set algorithm
-			sig.initVerify(certPublicKey);  //set public key to verify
+			sig.initVerify(rsaPublicKey);  //set public key to verify
 			sig.update(data); //set data to verify
 			return sig.verify(signature); //verifies signature	
 		} catch (NoSuchAlgorithmException e) {
@@ -139,12 +143,12 @@ public class Crypto {
 	/** CERTIFICATES **/
 	//methods for accessing certificate private/public keys 
 
-	public void loadCertPublicKey(String filepath) {
+	public void loadRSAPublicKey(String filepath) {
 		try {
 			FileInputStream fInputStream = new FileInputStream(filepath);
 			CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
 			Certificate cert = certFactory.generateCertificate(fInputStream);
-			certPublicKey = (RSAPublicKey) cert.getPublicKey();
+			rsaPublicKey = (RSAPublicKey) cert.getPublicKey();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (CertificateException e) {
@@ -152,23 +156,33 @@ public class Crypto {
 		}
 	}
 	
-	
-	public void loadCertPrivateKey(String filepath) {
-		
-		//TODO get encoded private key from filepath (is key encrypted?)
-		byte[] encodedKey = null;
-		
+	//TODO not loading private keys properly
+	public void loadRSAPrivateKey(String filepath) {	
 		try {
-			KeyFactory kf = KeyFactory.getInstance("RSA");
-			KeySpec keySpec = new PKCS8EncodedKeySpec(encodedKey);
-			certPrivateKey = (RSAPrivateKey) kf.generatePrivate(keySpec);
+            FileInputStream fileInputStream = new FileInputStream(filepath);
+            PKCS8Key pkcs8Key = new PKCS8Key(fileInputStream,"1q2w".toCharArray());
+            byte[] decrypted = pkcs8Key.getDecryptedBytes();
+            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec( decrypted );
+
+            //create Java privateKey
+            if(pkcs8Key.isRSA())
+            {
+            	rsaPrivateKey = (RSAPrivateKey) KeyFactory.getInstance("RSA").generatePrivate(spec);
+            }
+
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
 			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (GeneralSecurityException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
-	
+		
 	/** AES CIPHER **/
 	//symmetric key cryptography methods for encrypting/decrypting exchanged messages
 	
@@ -219,7 +233,23 @@ public class Crypto {
 	}	
 	
 	//TESTING
-	public SecretKey getSecretKey() {
+	public String getConnection() {
+		return connection;
+	}
+
+	public RSAPublicKey getRsaPublicKey() {
+		return rsaPublicKey;
+	}
+
+	public RSAPrivateKey getRsaPrivateKey() {
+		return rsaPrivateKey;
+	}
+
+	public KeyPair getDhKeyPair() {
+		return dhKeyPair;
+	}
+
+	public SecretKey getSharedSecretKey() {
 		return sharedSecretKey;
 	}
 }

@@ -5,5 +5,7 @@
 	<classpathentry kind="lib" path="src/javax.json-1.0.2.jar"/>
 	<classpathentry kind="lib" path="src/yamlbeans-1.09.jar"/>
 	<classpathentry kind="lib" path="src/infrastructure.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Samsug/Downloads/not-yet-commons-ssl-0.3.17.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Samsug/Downloads/bcprov-jdk16-140.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

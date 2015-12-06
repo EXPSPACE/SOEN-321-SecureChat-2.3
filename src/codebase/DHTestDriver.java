@@ -29,12 +29,12 @@ public class DHTestDriver {
 		serverCrypto.genSharedSecretAESKey(clientCrypto.getDHPublicKey());
 		
 		System.out.println("Secret Key A: ");
-		System.out.println(clientCrypto.getSecretKey().getFormat());
-		System.out.println(Arrays.toString(clientCrypto.getSecretKey().getEncoded()));
+		System.out.println(clientCrypto.getSharedSecretKey().getFormat());
+		System.out.println(Arrays.toString(clientCrypto.getSharedSecretKey().getEncoded()));
 		
 		System.out.println("Secret Key S: ");
-		System.out.println(clientCrypto.getSecretKey().getFormat());
-		System.out.println(Arrays.toString(serverCrypto.getSecretKey().getEncoded()));
+		System.out.println(clientCrypto.getSharedSecretKey().getFormat());
+		System.out.println(Arrays.toString(serverCrypto.getSharedSecretKey().getEncoded()));
 		
 		byte[] testMessage = "This is an ecryptable test message".getBytes();
 		
