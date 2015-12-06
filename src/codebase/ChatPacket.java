@@ -18,11 +18,10 @@ public class ChatPacket implements java.io.Serializable{
 	public ChatRequest request;
 	public String uid;
 	public String password;
-	public String success;
-	
-	
+	public String success;	
 	public byte[] data;	
+	
 	public PublicKey dhPublicKey; //diffie-hellman public key 
-	public byte[] signature;
+	public byte[] signature;	  //signature of dhpublic key
 	public byte[] iv;
 }

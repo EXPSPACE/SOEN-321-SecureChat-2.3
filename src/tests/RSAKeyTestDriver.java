@@ -1,6 +1,8 @@
-package codebase;
+package tests;
 
 import java.util.Arrays;
+
+import codebase.Crypto;
 
 public class RSAKeyTestDriver {
 

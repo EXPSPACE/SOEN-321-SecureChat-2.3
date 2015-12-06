@@ -1,7 +1,9 @@
-package codebase;
+package tests;
 
 import java.security.PublicKey;
 import java.util.Arrays;
+
+import codebase.Crypto;
 
 public class DHTestDriver {
 
