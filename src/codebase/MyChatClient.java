@@ -40,11 +40,18 @@ class MyChatClient extends ChatClient {
 								// preserve
 		super(IsA); // IsA indicates whether it's client A or B
 		startComm(); // starts the communication
+		clientCryptoCon = new ChatCrypto();
+		
 	}
 
 	/** The current user that is logged in on this client **/
 	public String curUser = "";
-
+	
+	//object containing cryptographic info needed for secure connection from client to server
+	private ChatCrypto clientCryptoCon;
+	private File privKeyFile;
+	private boolean authenticated;
+	
 	/** The Json array storing the internal history state */
 	JsonArray chatlog;
 
@@ -56,28 +63,38 @@ class MyChatClient extends ChatClient {
 	 * Someone clicks on the "Login" button
 	 */
 	public void LoginRequestReceived(String uid, String pwd) {
-		ChatPacket p = new ChatPacket();
-		p.request = ChatRequest.LOGIN;
-		p.uid = uid;
-		p.password = pwd;
+		
+		ChatPacket cp = new ChatPacket();
+		
+		//load keys
+		clientCryptoCon.loadRSAPublicKey(new File("certificate/server.crt")); //server public key
+		clientCryptoCon.loadRSAPrivateKey(privKeyFile); //alice or bob private key
+		
+		
+		clientCryptoCon.genClientDHKeyPair();
+		cp.request = ChatRequest.DH_REQ;
+		cp.dhPublicKey = clientCryptoCon.getDHPublicKey();
+		cp.signature = clientCryptoCon.getSignature(cp.dhPublicKey.getEncoded());
+		cp.uid = clientCryptoCon.getCertificateName(); //TODO: correct?
 
-		SerializeNSend(p);
+		
+		SerializeNSend(cp);
 	}
 	
 	/**
 	 * Callback invoked when the certificate file is selected
-	 * @param path Selected certificate file's path
+	 * @param certFile Selected certificate file's path
 	 */
-	public void FileLocationReceivedCert(File path) {
-		// TODO
+	public void FileLocationReceivedCert(File certFile) {
+		clientCryptoCon.loadCertificateName(certFile);
 	}
 	
 	/**
 	 * Callback invoked when the private key file is selected
-	 * @param path Selected private key file's path
+	 * @param keyFile Selected private key file's path
 	 */
-	public void FileLocationReceivedPriv(File path) {
-		// TODO 
+	public void FileLocationReceivedPriv(File keyFile) {
+		privKeyFile = keyFile;		
 	}
 	
 	/**
@@ -85,7 +102,7 @@ class MyChatClient extends ChatClient {
 	 * @param IsPWD True if password-based (false if certificate-based).
 	 */
 	public void ReceivedMode(boolean IsPWD) {
-		// TODO
+
 	}
 
 
@@ -144,48 +161,62 @@ class MyChatClient extends ChatClient {
 		try {
 			in = new ObjectInputStream(is);
 			Object o = in.readObject();
-			ChatPacket p = (ChatPacket) o;
+			ChatPacket sp = (ChatPacket) o;
+			
+			if (sp.request == ChatRequest.DH_ACK) {
+				
+				//make sure dh public key was sent from server
+				boolean verifiedClientSide = clientCryptoCon.verifySignature(sp.signature, sp.dhPublicKey.getEncoded());
+				
+				if(verifiedClientSide) {
+					
+					//create shared aes key
+					clientCryptoCon.genSharedSecretAESKey(sp.dhPublicKey);
+					curUser = sp.uid; //TODO: curUser is properly set
 
-			if (p.request == ChatRequest.RESPONSE && p.success.equals("LOGIN")) {
-				// This indicates a successful login
-				curUser = p.uid;
-
-				// Time to load the chatlog
-				InputStream ins = null;
-				JsonReader jsonReader;
-				File f = new File(this.getChatLogPath());
-				if (f.exists() && !f.isDirectory()) {
-					try {
-						ins = new FileInputStream(this.getChatLogPath());
-						jsonReader = Json.createReader(ins);
-						chatlog = jsonReader.readArray();
-					} catch (FileNotFoundException e) {
-						System.err.println("Chatlog file could not be opened.");
+					// Time to load the chatlog
+					InputStream ins = null;
+					JsonReader jsonReader;
+					File f = new File(this.getChatLogPath());
+					if (f.exists() && !f.isDirectory()) {
+						try {
+							ins = new FileInputStream(this.getChatLogPath());
+							jsonReader = Json.createReader(ins);
+							chatlog = jsonReader.readArray();
+						} catch (FileNotFoundException e) {
+							System.err.println("Chatlog file could not be opened.");
+						}
+					} else {
+						try {
+							f.createNewFile();
+							ins = new FileInputStream(this.getChatLogPath());
+							chatlog = Json.createArrayBuilder().build();
+						} catch (IOException e) {
+							System.err.println("Chatlog file could not be created or opened.");
+						}
 					}
+					
+					RefreshList();
 				} else {
-					try {
-						f.createNewFile();
-						ins = new FileInputStream(this.getChatLogPath());
-						chatlog = Json.createArrayBuilder().build();
-					} catch (IOException e) {
-						System.err.println("Chatlog file could not be created or opened.");
-					}
+					System.out.println("Client verification of server signature failed.");
 				}
 				
-				RefreshList();
-
-			} else if (p.request == ChatRequest.RESPONSE && p.success.equals("LOGOUT")) {
+			} else if (sp.request == ChatRequest.DH_NACK) {
+				System.out.println("Server verification of client signature failed.");	
+			} else if (sp.request == ChatRequest.RESPONSE && sp.success.equals("LOGOUT")) {
 				// Logged out, save chat log and clear messages on the UI
 				SaveChatHistory();
 				curUser = "";
 				UpdateMessages(null);
-			} else if (p.request == ChatRequest.CHAT && !curUser.equals("")) {
+				
+				//TODO: DECRYPTION!!
+			} else if (sp.request == ChatRequest.CHAT && !curUser.equals("")) {
 				// A new chat message received
-				Add1Message(p.uid, curUser, p.data);
-			} else if (p.request == ChatRequest.CHAT_ACK && !curUser.equals("")) {
+				Add1Message(sp.uid, curUser, sp.data);
+			} else if (sp.request == ChatRequest.CHAT_ACK && !curUser.equals("")) {
 				// This was sent by us and now it's confirmed by the server, add
 				// it to chat history
-				Add1Message(curUser, p.uid, p.data);
+				Add1Message(curUser, sp.uid, sp.data);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -194,6 +225,7 @@ class MyChatClient extends ChatClient {
 		}
 
 	}
+	
 	
 	/**
 	 * Gives the path of the local chat history file (user-based)

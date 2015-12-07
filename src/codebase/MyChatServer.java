@@ -39,6 +39,11 @@ class MyChatServer extends ChatServer {
 	String statA = "";
 	String statB = "";
 
+	// objects containing cryptographic info needed for secure connections to
+	// alice and bob
+	ChatCrypto serverCryptoCon1;
+	ChatCrypto serverCryptoCon2;
+
 	// In Constructor, the user database is loaded.
 	MyChatServer() {
 		try {
@@ -67,37 +72,37 @@ class MyChatServer extends ChatServer {
 		try {
 			in = new ObjectInputStream(is);
 			Object o = in.readObject();
-			ChatPacket p = (ChatPacket) o;
-			
-			if (p.request == ChatRequest.LOGIN) {
+			ChatPacket cp = (ChatPacket) o;
+
+			if (cp.request == ChatRequest.DH_REQ) {
 				
 				// We want to go through all records
 				for (int i = 0; i < database.size(); i++) {
-					
+
 					JsonObject l = database.getJsonObject(i);
-					
+
 					// When both uid and pwd match
-					if (l.getString("uid").equals(p.uid)
-							&& l.getString("password").equals(p.password)) {
-						
+					if (l.getString("uid").equals(cp.uid)
+							&& l.getString("password").equals(cp.password)) {
+
 						// We do not allow one user to be logged in on multiple
 						// clients
-						if (p.uid.equals(IsA ? statB : statA))
+						if (cp.uid.equals(IsA ? statB : statA))
 							continue;
-						
+
 						// Update the corresponding login status
 						if (IsA) {
 							statA = l.getString("uid");
 						} else {
 							statB = l.getString("uid");
 						}
-						
+
 						// Update the UI to indicate this
 						UpdateLogin(IsA, l.getString("uid"));
-						
+
 						// Inform the client that it was successful
 						RespondtoClient(IsA, "LOGIN");
-						
+
 						break;
 					}
 
@@ -107,7 +112,7 @@ class MyChatServer extends ChatServer {
 					// Oops, this means a failure, we tell the client so
 					RespondtoClient(IsA, "");
 				}
-			} else if (p.request == ChatRequest.LOGOUT) {
+			} else if (cp.request == ChatRequest.LOGOUT) {
 				if (IsA) {
 					statA = "";
 				} else {
@@ -115,20 +120,20 @@ class MyChatServer extends ChatServer {
 				}
 				UpdateLogin(IsA, "");
 				RespondtoClient(IsA, "LOGOUT");
-				
-			} else if (p.request == ChatRequest.CHAT) {
+
+			} else if (cp.request == ChatRequest.CHAT) {
 				// This is a chat message
 
 				// Whoever is sending it must be already logged in
 				if ((IsA && statA != "") || (!IsA && statB != "")) {
 					// Forward the original packet to the recipient
 					SendtoClient(!IsA, buf);
-					p.request = ChatRequest.CHAT_ACK;
-					p.uid = (IsA ? statB : statA);
+					cp.request = ChatRequest.CHAT_ACK;
+					cp.uid = (IsA ? statB : statA);
 
 					// Flip the uid and send it back to the sender for updating
 					// chat history
-					SerializeNSend(IsA, p);
+					SerializeNSend(IsA, cp);
 				}
 			}
 		} catch (IOException e) {
@@ -137,6 +142,7 @@ class MyChatServer extends ChatServer {
 			e.printStackTrace();
 		}
 	}
+
 
 	/**
 	 * Methods for updating UI

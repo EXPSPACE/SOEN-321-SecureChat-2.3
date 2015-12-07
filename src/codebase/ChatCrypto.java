@@ -1,6 +1,7 @@
 package codebase;
 
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -24,6 +25,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -36,12 +39,13 @@ import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.security.cert.X509Certificate;
 
 import org.apache.commons.ssl.PKCS8Key;
 
-public class Crypto {
+public class ChatCrypto {
 	
-	private String connection;
+	private String certificateName;
 	private RSAPublicKey rsaPublicKey;   // public key of connection
 	private RSAPrivateKey rsaPrivateKey; // self private key
 	private KeyPair dhKeyPair;
@@ -143,9 +147,9 @@ public class Crypto {
 	/** CERTIFICATES **/
 	//methods for accessing certificate private/public keys 
 
-	public void loadRSAPublicKey(String filepath) {
+	public void loadRSAPublicKey(File file) {
 		try {
-			FileInputStream fInputStream = new FileInputStream(filepath);
+			FileInputStream fInputStream = new FileInputStream(file);
 			CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
 			Certificate cert = certFactory.generateCertificate(fInputStream);
 			rsaPublicKey = (RSAPublicKey) cert.getPublicKey();
@@ -156,10 +160,10 @@ public class Crypto {
 		}
 	}
 	
-	//TODO not loading private keys properly
-	public void loadRSAPrivateKey(String filepath) {	
+	//TODO set to unlock priv key with pass phrase from password text field?
+	public void loadRSAPrivateKey(File file) {	
 		try {
-            FileInputStream fileInputStream = new FileInputStream(filepath);
+            FileInputStream fileInputStream = new FileInputStream(file);
             PKCS8Key pkcs8Key = new PKCS8Key(fileInputStream,"1q2w".toCharArray());
             byte[] decrypted = pkcs8Key.getDecryptedBytes();
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec( decrypted );
@@ -182,13 +186,31 @@ public class Crypto {
 			e.printStackTrace();
 		}
 	}
+	
+	public void loadCertificateName(File file) {
+		try {		
+			FileInputStream inStream = new FileInputStream(file);
+			X509Certificate cert = X509Certificate.getInstance(inStream);
+			
+			Pattern p = Pattern.compile("(?<=CN=)[a-z]*");
+			Matcher m = p.matcher(cert.getSubjectDN().getName());
+			if (m.find()) {
+				certificateName = m.group();
+		    }
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (javax.security.cert.CertificateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 		
 	/** AES CIPHER **/
 	//symmetric key cryptography methods for encrypting/decrypting exchanged messages
 	
 	public byte[] getEncryptedMsg(byte[] message) {
 		Cipher cipher;
-		byte[] iv = new byte[16]; //TODO : Generate unique iv each time message is encrypted (prevents replay attacks?)
+		byte[] iv = new byte[16]; //TODO : Generate unique iv each time message is encrypted (prevents replay attacks?) attach to packet
 		try {
 			cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 			cipher.init(Cipher.ENCRYPT_MODE, sharedSecretKey, new IvParameterSpec(iv));
@@ -230,11 +252,16 @@ public class Crypto {
 			e.printStackTrace();
 		}
 		return null;
-	}	
+	}
+	
+	//TODO:
+//	public ChatPacket decryptReEncryptPacket(ChatPacket senderPacket, ChatCrypto recieverCryptInfo) {
+//
+//	}
 	
 	//TESTING
-	public String getConnection() {
-		return connection;
+	public String getCertificateName() {
+		return certificateName;
 	}
 
 	public RSAPublicKey getRsaPublicKey() {

@@ -3,13 +3,13 @@ package tests;
 import java.security.PublicKey;
 import java.util.Arrays;
 
-import codebase.Crypto;
+import codebase.ChatCrypto;
 
 public class DHTestDriver {
 
 	public static void main(String[] args) {
-		Crypto clientCrypto = new Crypto();
-		Crypto serverCrypto = new Crypto();
+		ChatCrypto clientCrypto = new ChatCrypto();
+		ChatCrypto serverCrypto = new ChatCrypto();
 		
 		clientCrypto.genClientDHKeyPair();
 		serverCrypto.genServerDHKeyPair(clientCrypto.getDHPublicKey());

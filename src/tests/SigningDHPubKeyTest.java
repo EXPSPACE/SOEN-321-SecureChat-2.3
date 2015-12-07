@@ -1,20 +1,22 @@
 package tests;
 
+import java.io.File;
+
 import codebase.*;
 
 public class SigningDHPubKeyTest {
 
 	public static void main(String[] args) {
 				
-		Crypto clientCrypto = new Crypto();
-		Crypto serverCrypto = new Crypto();
+		ChatCrypto clientCrypto = new ChatCrypto();
+		ChatCrypto serverCrypto = new ChatCrypto();
 		
 		//load keys	
-		clientCrypto.loadRSAPrivateKey("privatekey/alice.key.pem");
-		clientCrypto.loadRSAPublicKey("certificate/server.crt");
+		clientCrypto.loadRSAPrivateKey(new File("privatekey/alice.key.pem"));
+		clientCrypto.loadRSAPublicKey(new File("certificate/server.crt"));
 			
-		serverCrypto.loadRSAPrivateKey("privatekey/server.key.pem");
-		serverCrypto.loadRSAPublicKey("certificate/alice.crt");
+		serverCrypto.loadRSAPrivateKey(new File("privatekey/server.key.pem"));
+		serverCrypto.loadRSAPublicKey(new File("certificate/alice.crt"));
 		
 		//send client to server info
 		clientCrypto.genClientDHKeyPair();
@@ -51,6 +53,18 @@ public class SigningDHPubKeyTest {
 				System.out.println("verified failed client side");
 			}		
 		}
+		
+		//establish key pairs
+		
+		serverCrypto.genSharedSecretAESKey(cp.dhPublicKey);
+		clientCrypto.genSharedSecretAESKey(sp.dhPublicKey);
+		
+		byte[] testMessage = "This is an ecryptable test message".getBytes();
+		
+		testMessage = clientCrypto.getEncryptedMsg(testMessage);
+		testMessage = serverCrypto.getDecryptedMsg(testMessage, new byte[16]);
+		
+		System.out.println(new String(testMessage));
 
 		
 	}
