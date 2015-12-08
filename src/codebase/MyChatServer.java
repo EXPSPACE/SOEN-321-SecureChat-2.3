@@ -2,6 +2,7 @@ package codebase;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.security.PublicKey;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -41,8 +43,8 @@ class MyChatServer extends ChatServer {
 
 	// objects containing cryptographic info needed for secure connections to
 	// alice and bob
-	ChatCrypto serverCrypto1;
-	ChatCrypto serverCrypto2;
+	ChatCrypto serverCryptoAlice;
+	ChatCrypto serverCryptoBob;
 
 	// In Constructor, the user database is loaded.
 	MyChatServer() {
@@ -55,6 +57,15 @@ class MyChatServer extends ChatServer {
 			System.err.println("Database file not found!");
 			System.exit(-1);
 		}
+		
+		//assumption is that server already has valid certificates for alice and bob (and hence public keys)
+		serverCryptoAlice = new ChatCrypto();
+		serverCryptoAlice.loadRSAPrivateKey(new File("privatekey/server.key.pem"));
+		serverCryptoAlice.loadRSAPublicKey(new File("certificate/alice.crt"));
+		
+		serverCryptoBob = new ChatCrypto();
+		serverCryptoBob.loadRSAPrivateKey(new File("privatekey/server.key.pem"));
+		serverCryptoBob.loadRSAPublicKey(new File("certificate/bob.crt"));
 	}
 
 	/**
@@ -69,6 +80,15 @@ class MyChatServer extends ChatServer {
 	public void PacketReceived(boolean IsA, byte[] buf) {
 		ByteArrayInputStream is = new ByteArrayInputStream(buf);
 		ObjectInput in = null;
+		ChatCrypto connectedCrypto; 
+		
+		//establish which cryptographic connection information to use
+		if(IsA) { 
+			connectedCrypto = serverCryptoAlice;
+		} else {
+			connectedCrypto = serverCryptoBob;
+		}
+		
 		try {
 			in = new ObjectInputStream(is);
 			Object o = in.readObject();
@@ -81,19 +101,35 @@ class MyChatServer extends ChatServer {
 
 					JsonObject l = database.getJsonObject(i);
 
-					// When both uid and pwd match
-					if (l.getString("uid").equals(cp.uid)
-							&& l.getString("password").equals(cp.password)) {
-
+					// user is registered
+					if (l.getString("uid").equals(cp.uid)) {
+						
 						// We do not allow one user to be logged in on multiple
 						// clients
 						if (cp.uid.equals(IsA ? statB : statA))
 							continue;
 
-
-						// Inform the client that it was successful
-						RespondtoClient(IsA, "LOGIN");
-						SerializeNSend(IsA, p);	
+						boolean verifiedServerSide = connectedCrypto.verifySignature(cp.signature, cp.dhPublicKey.getEncoded());		
+						
+						if(verifiedServerSide) { 
+							connectedCrypto.genServerDHKeyPair(cp.dhPublicKey);
+							connectedCrypto.genSharedSecretAESKey(cp.dhPublicKey);
+							
+							System.out.println("Server: verification of client " + cp.uid + " signed dh public param passed.");
+							
+							//return acknowledgement packet of verified dh public parameter
+							ChatPacket sp = new ChatPacket();
+					
+							sp.request = ChatRequest.DH_ACK;
+							sp.dhPublicKey = connectedCrypto.getDHPublicKey();
+							sp.signature = connectedCrypto.getSignature(sp.dhPublicKey.getEncoded());
+							sp.uid = cp.uid; 
+		
+							SerializeNSend(IsA, sp);		
+						} else {
+							System.out.println("Server: verification of client " + cp.uid + " signed dh public param failed.");							
+						}
+						
 						break;
 					}
 
@@ -107,7 +143,7 @@ class MyChatServer extends ChatServer {
 				
 
 				// Update the UI to indicate this
-				//UpdateLogin(IsA, l.getString("uid")); TODO: get cert name
+				UpdateLogin(IsA, (IsA ? statB : statA)); 
 
 				
 			}

@@ -170,37 +170,45 @@ class MyChatClient extends ChatClient {
 					//create shared aes key
 					clientCrypto.genSharedSecretAESKey(sp.dhPublicKey);
 					curUser = sp.uid; //TODO: curUser is properly set
-
-					// Time to load the chatlog
-					InputStream ins = null;
-					JsonReader jsonReader;
-					File f = new File(this.getChatLogPath());
-					if (f.exists() && !f.isDirectory()) {
-						try {
-							ins = new FileInputStream(this.getChatLogPath());
-							jsonReader = Json.createReader(ins);
-							chatlog = jsonReader.readArray();
-						} catch (FileNotFoundException e) {
-							System.err.println("Chatlog file could not be opened.");
-						}
-					} else {
-						try {
-							f.createNewFile();
-							ins = new FileInputStream(this.getChatLogPath());
-							chatlog = Json.createArrayBuilder().build();
-						} catch (IOException e) {
-							System.err.println("Chatlog file could not be created or opened.");
-						}
-					}
 					
-					RefreshList();
+					System.out.println("Client: " + curUser + " verification of server signed dh public param passed.");
+					
+					//create auth request packet client -> server
+
 				} else {
-					System.out.println("Client verification of server signature failed.");
+					System.out.println("Client: " + curUser + " verification of server signed dh public param failed.");
 				}
 				
-			} else if (sp.request == ChatRequest.DH_NACK) {
-				System.out.println("Server verification of client signature failed.");	
-			} else if (sp.request == ChatRequest.RESPONSE && sp.success.equals("LOGOUT")) {
+			} else if (sp.request == ChatRequest.AUTH_REQ) {
+				//clientCrypto.authenticateConnection(encAuthCode, iv);
+				 //print auth status
+
+				
+				// Time to load the chatlog
+				InputStream ins = null;
+				JsonReader jsonReader;
+				File f = new File(this.getChatLogPath());
+				if (f.exists() && !f.isDirectory()) {
+					try {
+						ins = new FileInputStream(this.getChatLogPath());
+						jsonReader = Json.createReader(ins);
+						chatlog = jsonReader.readArray();
+					} catch (FileNotFoundException e) {
+						System.err.println("Chatlog file could not be opened.");
+					}
+				} else {
+					try {
+						f.createNewFile();
+						ins = new FileInputStream(this.getChatLogPath());
+						chatlog = Json.createArrayBuilder().build();
+					} catch (IOException e) {
+						System.err.println("Chatlog file could not be created or opened.");
+					}
+				}
+				
+				RefreshList();
+				
+			}else if (sp.request == ChatRequest.RESPONSE && sp.success.equals("LOGOUT")) {
 				// Logged out, save chat log and clear messages on the UI
 				SaveChatHistory();
 				curUser = "";
