@@ -174,16 +174,31 @@ class MyChatClient extends ChatClient {
 					System.out.println("Client: " + curUser + " verification of server signed dh public param passed.");
 					
 					//create auth request packet client -> server
+					ChatPacket cp = new ChatPacket();
+					cp.request = ChatRequest.AUTH_REQ;
+					cp.uid = curUser;
+					byte[] iv = new byte[16]; //TODO: set to generate new random iv
+					cp.data = clientCrypto.getEncryptedMsg(ChatCrypto.AUTH_CODE,iv);
+					cp.iv = iv;
+					SerializeNSend(cp);
+					
 
 				} else {
 					System.out.println("Client: " + curUser + " verification of server signed dh public param failed.");
 				}
 				
 			} else if (sp.request == ChatRequest.AUTH_REQ) {
-				//clientCrypto.authenticateConnection(encAuthCode, iv);
-				 //print auth status
-
+	
+				//confirm authentication of client
+				clientCrypto.authenticateConnection(sp.data, sp.iv);
 				
+				//create auth request packet server -> client
+				if(clientCrypto.isAuthenticated()) {
+					System.out.println("Client: authentication of server complete, secure connection established.");
+				} else {
+					System.out.println("Client: authentication of server failed, secure connection not established.");
+				}
+			
 				// Time to load the chatlog
 				InputStream ins = null;
 				JsonReader jsonReader;

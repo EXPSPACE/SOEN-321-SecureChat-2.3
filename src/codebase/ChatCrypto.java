@@ -48,7 +48,7 @@ import org.apache.commons.ssl.PKCS8Key;
 
 public class ChatCrypto {
 	
-	private static final byte[] AUTH_CODE = new byte[16]; //AES forward secrecy resistant
+	public static final byte[] AUTH_CODE = new byte[16]; //AES forward secrecy resistant
 	
 	private String certificateName;
 	private RSAPublicKey rsaPublicKey;   // public key of connection

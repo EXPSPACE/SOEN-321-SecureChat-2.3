@@ -141,11 +141,35 @@ class MyChatServer extends ChatServer {
 				}
 			} else if (cp.request == ChatRequest.AUTH_REQ) {
 				
-
-				// Update the UI to indicate this
-				UpdateLogin(IsA, (IsA ? statB : statA)); 
-
+				//confirm authentication of client
+				connectedCrypto.authenticateConnection(cp.data, cp.iv);
 				
+				//create auth request packet server -> client
+				if(connectedCrypto.isAuthenticated()) {
+					
+					System.out.println("Server: authentication of client " + cp.uid + " complete, secure connection established.");
+					
+					ChatPacket sp = new ChatPacket();
+					sp.request = ChatRequest.AUTH_REQ;
+					sp.uid = cp.uid;
+					byte[] iv = new byte[16]; //TODO: set to generate new random iv
+					sp.data = connectedCrypto.getEncryptedMsg(ChatCrypto.AUTH_CODE,iv);
+					sp.iv = iv;
+					SerializeNSend(IsA, sp);
+					
+					// Update the corresponding login status
+					if(IsA) {
+						statA = cp.uid;
+					} else {
+						statB = cp.uid;
+					}
+					
+					// Update the UI to indicate this
+					UpdateLogin(IsA, (IsA ? statA : statB)); 					
+				} else {
+					System.out.println("Server: authentication of client " + cp.uid + " failed, secure connection not established.");
+				}
+								
 			}
 			
 			else if (cp.request == ChatRequest.LOGOUT) {
