@@ -9,9 +9,9 @@ import codebase.ChatCrypto;
 public class X509Test {
 
 	public static void main(String[] args) {
-		ChatCrypto AliceTest = new ChatCrypto();
-		AliceTest.loadCertificateName(new File("certificate/bob.crt"));
-		System.out.println(AliceTest.getCertificateName());
+		ChatCrypto certTest = new ChatCrypto();
+		certTest.loadCertificateName(new File("certificate/alice.crt"));
+		System.out.println(certTest.getCertificateName());
 	
 	}
 

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -14,6 +15,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.Certificate;
@@ -25,6 +27,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,11 +48,14 @@ import org.apache.commons.ssl.PKCS8Key;
 
 public class ChatCrypto {
 	
+	private static final byte[] AUTH_CODE = new byte[16]; //AES forward secrecy resistant
+	
 	private String certificateName;
 	private RSAPublicKey rsaPublicKey;   // public key of connection
 	private RSAPrivateKey rsaPrivateKey; // self private key
 	private KeyPair dhKeyPair;
 	private SecretKey sharedSecretKey;    //message enc/dec key
+	private boolean authenticated;
 	
 	/** DIFFIE-HELLMAN **/
 	//methods for generating diffie-hellman public/private key pairs and performing key exchange
@@ -200,7 +206,6 @@ public class ChatCrypto {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (javax.security.cert.CertificateException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -208,9 +213,8 @@ public class ChatCrypto {
 	/** AES CIPHER **/
 	//symmetric key cryptography methods for encrypting/decrypting exchanged messages
 	
-	public byte[] getEncryptedMsg(byte[] message) {
+	public byte[] getEncryptedMsg(byte[] message, byte[] iv) {
 		Cipher cipher;
-		byte[] iv = new byte[16]; //TODO : Generate unique iv each time message is encrypted (prevents replay attacks?) attach to packet
 		try {
 			cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 			cipher.init(Cipher.ENCRYPT_MODE, sharedSecretKey, new IvParameterSpec(iv));
@@ -254,10 +258,41 @@ public class ChatCrypto {
 		return null;
 	}
 	
-	//TODO:
-//	public ChatPacket decryptReEncryptPacket(ChatPacket senderPacket, ChatCrypto recieverCryptInfo) {
-//
+	public void authenticateConnection(byte[] encAuthCode, byte[] iv) {
+		Cipher cipher;
+		try {
+			cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			cipher.init(Cipher.DECRYPT_MODE, sharedSecretKey, new IvParameterSpec(iv));
+			byte[] decAuthCode = cipher.doFinal(encAuthCode);
+			authenticated = Arrays.equals(decAuthCode, AUTH_CODE);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//TODO:	
+//	public byte[] genRandomIV() {
+//		
 //	}
+	
+	//forwards messages from one client to another on the server after both are authenticated
+	public static void decryptReEncryptPacket(ChatPacket senderPacket, ChatCrypto senderInfo, ChatCrypto recieverInfo) {
+		byte[] decryptedMsg = senderInfo.getDecryptedMsg(senderPacket.data, senderPacket.iv);
+		byte[] iv = new byte[16];//TODO generate new IV
+		byte[] encryptedMsg = recieverInfo.getEncryptedMsg(decryptedMsg, iv);
+		senderPacket.data = encryptedMsg;
+		senderPacket.iv = iv;
+	}
 	
 	//TESTING
 	public String getCertificateName() {
@@ -279,4 +314,10 @@ public class ChatCrypto {
 	public SecretKey getSharedSecretKey() {
 		return sharedSecretKey;
 	}
+
+	public boolean isAuthenticated() {
+		return authenticated;
+	}
+
+
 }

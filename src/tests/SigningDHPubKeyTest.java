@@ -61,7 +61,7 @@ public class SigningDHPubKeyTest {
 		
 		byte[] testMessage = "This is an ecryptable test message".getBytes();
 		
-		testMessage = clientCrypto.getEncryptedMsg(testMessage);
+		testMessage = clientCrypto.getEncryptedMsg(testMessage, new byte[16]);
 		testMessage = serverCrypto.getDecryptedMsg(testMessage, new byte[16]);
 		
 		System.out.println(new String(testMessage));

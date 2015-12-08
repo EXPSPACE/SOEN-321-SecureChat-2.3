@@ -41,8 +41,8 @@ class MyChatServer extends ChatServer {
 
 	// objects containing cryptographic info needed for secure connections to
 	// alice and bob
-	ChatCrypto serverCryptoCon1;
-	ChatCrypto serverCryptoCon2;
+	ChatCrypto serverCrypto1;
+	ChatCrypto serverCrypto2;
 
 	// In Constructor, the user database is loaded.
 	MyChatServer() {
@@ -90,19 +90,10 @@ class MyChatServer extends ChatServer {
 						if (cp.uid.equals(IsA ? statB : statA))
 							continue;
 
-						// Update the corresponding login status
-						if (IsA) {
-							statA = l.getString("uid");
-						} else {
-							statB = l.getString("uid");
-						}
-
-						// Update the UI to indicate this
-						UpdateLogin(IsA, l.getString("uid"));
 
 						// Inform the client that it was successful
 						RespondtoClient(IsA, "LOGIN");
-
+						SerializeNSend(IsA, p);	
 						break;
 					}
 
@@ -112,7 +103,16 @@ class MyChatServer extends ChatServer {
 					// Oops, this means a failure, we tell the client so
 					RespondtoClient(IsA, "");
 				}
-			} else if (cp.request == ChatRequest.LOGOUT) {
+			} else if (cp.request == ChatRequest.AUTH_REQ) {
+				
+
+				// Update the UI to indicate this
+				//UpdateLogin(IsA, l.getString("uid")); TODO: get cert name
+
+				
+			}
+			
+			else if (cp.request == ChatRequest.LOGOUT) {
 				if (IsA) {
 					statA = "";
 				} else {

@@ -40,18 +40,16 @@ class MyChatClient extends ChatClient {
 								// preserve
 		super(IsA); // IsA indicates whether it's client A or B
 		startComm(); // starts the communication
-		clientCryptoCon = new ChatCrypto();
-		
+		clientCrypto = new ChatCrypto();	
 	}
 
 	/** The current user that is logged in on this client **/
 	public String curUser = "";
 	
 	//object containing cryptographic info needed for secure connection from client to server
-	private ChatCrypto clientCryptoCon;
+	private ChatCrypto clientCrypto;
 	private File privKeyFile;
-	private boolean authenticated;
-	
+
 	/** The Json array storing the internal history state */
 	JsonArray chatlog;
 
@@ -67,17 +65,16 @@ class MyChatClient extends ChatClient {
 		ChatPacket cp = new ChatPacket();
 		
 		//load keys
-		clientCryptoCon.loadRSAPublicKey(new File("certificate/server.crt")); //server public key
-		clientCryptoCon.loadRSAPrivateKey(privKeyFile); //alice or bob private key
+		clientCrypto.loadRSAPublicKey(new File("certificate/server.crt")); //server public key
+		clientCrypto.loadRSAPrivateKey(privKeyFile); //alice or bob private key
 		
+		clientCrypto.genClientDHKeyPair();
 		
-		clientCryptoCon.genClientDHKeyPair();
 		cp.request = ChatRequest.DH_REQ;
-		cp.dhPublicKey = clientCryptoCon.getDHPublicKey();
-		cp.signature = clientCryptoCon.getSignature(cp.dhPublicKey.getEncoded());
-		cp.uid = clientCryptoCon.getCertificateName(); //TODO: correct?
+		cp.dhPublicKey = clientCrypto.getDHPublicKey();
+		cp.signature = clientCrypto.getSignature(cp.dhPublicKey.getEncoded());
+		cp.uid = clientCrypto.getCertificateName(); 
 
-		
 		SerializeNSend(cp);
 	}
 	
@@ -86,7 +83,7 @@ class MyChatClient extends ChatClient {
 	 * @param certFile Selected certificate file's path
 	 */
 	public void FileLocationReceivedCert(File certFile) {
-		clientCryptoCon.loadCertificateName(certFile);
+		clientCrypto.loadCertificateName(certFile);
 	}
 	
 	/**
@@ -166,12 +163,12 @@ class MyChatClient extends ChatClient {
 			if (sp.request == ChatRequest.DH_ACK) {
 				
 				//make sure dh public key was sent from server
-				boolean verifiedClientSide = clientCryptoCon.verifySignature(sp.signature, sp.dhPublicKey.getEncoded());
+				boolean verifiedClientSide = clientCrypto.verifySignature(sp.signature, sp.dhPublicKey.getEncoded());
 				
 				if(verifiedClientSide) {
 					
 					//create shared aes key
-					clientCryptoCon.genSharedSecretAESKey(sp.dhPublicKey);
+					clientCrypto.genSharedSecretAESKey(sp.dhPublicKey);
 					curUser = sp.uid; //TODO: curUser is properly set
 
 					// Time to load the chatlog
