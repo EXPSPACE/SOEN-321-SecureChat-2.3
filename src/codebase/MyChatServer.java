@@ -127,7 +127,8 @@ class MyChatServer extends ChatServer {
 		
 							SerializeNSend(IsA, sp);		
 						} else {
-							System.out.println("Server: verification of client " + cp.uid + " signed dh public param failed.");							
+							System.out.println("Server: verification of client " + cp.uid + " signed dh public param failed.");	
+							System.out.println("WARNING: man-in-the-middle attack client -> server.");
 						}
 						
 						break;
@@ -147,7 +148,7 @@ class MyChatServer extends ChatServer {
 				//create auth request packet server -> client
 				if(connectedCrypto.isAuthenticated()) {
 					
-					System.out.println("Server: authentication of client " + cp.uid + " complete, secure connection established.");
+					System.out.println("Server: authentication of client " + cp.uid + " complete.");
 					
 					ChatPacket sp = new ChatPacket();
 					sp.request = ChatRequest.AUTH_REQ;
@@ -167,7 +168,8 @@ class MyChatServer extends ChatServer {
 					// Update the UI to indicate this
 					UpdateLogin(IsA, (IsA ? statA : statB)); 					
 				} else {
-					System.out.println("Server: authentication of client " + cp.uid + " failed, secure connection not established.");
+					System.out.println("Server: authentication of client " + cp.uid + " failed.");
+					System.out.println("WARNING: replay attack client -> server.");
 				}
 								
 			}
@@ -182,18 +184,40 @@ class MyChatServer extends ChatServer {
 				RespondtoClient(IsA, "LOGOUT");
 
 			} else if (cp.request == ChatRequest.CHAT) {
-				// This is a chat message
-
-				// Whoever is sending it must be already logged in
-				if ((IsA && statA != "") || (!IsA && statB != "")) {
-					// Forward the original packet to the recipient
-					SendtoClient(!IsA, buf);
-					cp.request = ChatRequest.CHAT_ACK;
-					cp.uid = (IsA ? statB : statA);
-
+		
+				// Whenever sending both clients must be authenticated for message to pass
+				if(serverCryptoAlice.isAuthenticated() && serverCryptoBob.isAuthenticated()) {
+					
 					// Flip the uid and send it back to the sender for updating
 					// chat history
+					cp.request = ChatRequest.CHAT_ACK;
+					cp.uid = (IsA ? statB : statA);
 					SerializeNSend(IsA, cp);
+					
+					//establish sender and reciever
+					ChatCrypto senderConnection;
+					ChatCrypto recieverConnection;
+					
+					if(IsA) {
+						senderConnection = serverCryptoAlice;
+						recieverConnection = serverCryptoBob;
+					} else {
+						senderConnection = serverCryptoBob;
+						recieverConnection = serverCryptoAlice;
+					}
+					
+					//forward original packet after server translation
+					
+					//recieving packet data gets decrypted using sender shared AES key, this is then re-encrypted using
+					//shared AES key of sender and sent to reciever
+					
+					cp.request = ChatRequest.CHAT;
+					cp.uid = (IsA ? statA : statB);
+					ChatCrypto.decryptReEncryptPacket(cp, senderConnection, recieverConnection);
+					SerializeNSend(!IsA, cp);
+				
+				} else {
+					System.out.println("Secure communications failed, both parties not authenticated.");
 				}
 			}
 		} catch (IOException e) {

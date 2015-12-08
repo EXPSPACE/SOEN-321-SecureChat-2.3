@@ -281,7 +281,7 @@ public class ChatCrypto {
 	}
 	
 	//TODO:	
-//	public byte[] genRandomIV() {
+//	public static byte[] genRandomIV() {
 //		
 //	}
 	

@@ -14,6 +14,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -99,7 +100,7 @@ class MyChatClient extends ChatClient {
 	 * @param IsPWD True if password-based (false if certificate-based).
 	 */
 	public void ReceivedMode(boolean IsPWD) {
-
+		//application only functions for certificate based mode selecting the checkbox does nothing
 	}
 
 
@@ -118,11 +119,22 @@ class MyChatClient extends ChatClient {
 	 * @param message Message to be sent (user's level)
 	 */
 	public void ChatRequestReceived(byte[] message) {
-		ChatPacket p = new ChatPacket();
-		p.request = ChatRequest.CHAT;
-		p.uid = curUser;
-		p.data = message;
-		SerializeNSend(p);
+	
+		if(clientCrypto.isAuthenticated()) {
+			ChatPacket p = new ChatPacket();
+			p.request = ChatRequest.CHAT;
+			p.uid = curUser;
+			
+			//encrypt data to be sent
+			byte[] iv = new byte[16]; //TODO : Generate new iv
+			
+			
+			p.data = clientCrypto.getEncryptedMsg(message,iv);
+			p.iv = iv;
+			
+			SerializeNSend(p);
+		}
+
 	}
 
 	/**
@@ -169,7 +181,7 @@ class MyChatClient extends ChatClient {
 					
 					//create shared aes key
 					clientCrypto.genSharedSecretAESKey(sp.dhPublicKey);
-					curUser = sp.uid; //TODO: curUser is properly set
+					curUser = sp.uid; 
 					
 					System.out.println("Client: " + curUser + " verification of server signed dh public param passed.");
 					
@@ -185,6 +197,7 @@ class MyChatClient extends ChatClient {
 
 				} else {
 					System.out.println("Client: " + curUser + " verification of server signed dh public param failed.");
+					System.out.println("WARNING: man-in-the-middle attack server -> client.");
 				}
 				
 			} else if (sp.request == ChatRequest.AUTH_REQ) {
@@ -197,6 +210,7 @@ class MyChatClient extends ChatClient {
 					System.out.println("Client: authentication of server complete, secure connection established.");
 				} else {
 					System.out.println("Client: authentication of server failed, secure connection not established.");
+					System.out.println("WARNING: replay attack server -> client.");
 				}
 			
 				// Time to load the chatlog
@@ -229,14 +243,15 @@ class MyChatClient extends ChatClient {
 				curUser = "";
 				UpdateMessages(null);
 				
-				//TODO: DECRYPTION!!
-			} else if (sp.request == ChatRequest.CHAT && !curUser.equals("")) {
-				// A new chat message received
-				Add1Message(sp.uid, curUser, sp.data);
+			} else if (sp.request == ChatRequest.CHAT && !curUser.equals("")) {			
+				
+				byte[] decryptedMessage = clientCrypto.getDecryptedMsg(sp.data, sp.iv);
+				Add1Message(sp.uid, curUser, decryptedMessage);
 			} else if (sp.request == ChatRequest.CHAT_ACK && !curUser.equals("")) {
-				// This was sent by us and now it's confirmed by the server, add
-				// it to chat history
-				Add1Message(curUser, sp.uid, sp.data);
+				
+				// This was sent by us and now it's confirmed by the server				
+				byte[] decryptedMessage = clientCrypto.getDecryptedMsg(sp.data, sp.iv);
+				Add1Message(curUser, sp.uid, decryptedMessage);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
