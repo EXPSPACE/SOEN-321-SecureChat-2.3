@@ -153,7 +153,7 @@ class MyChatServer extends ChatServer {
 					ChatPacket sp = new ChatPacket();
 					sp.request = ChatRequest.AUTH_REQ;
 					sp.uid = cp.uid;
-					byte[] iv = new byte[16]; //TODO: set to generate new random iv
+					byte[] iv = ChatCrypto.genRandomIV();
 					sp.data = connectedCrypto.getEncryptedMsg(ChatCrypto.AUTH_CODE,iv);
 					sp.iv = iv;
 					SerializeNSend(IsA, sp);

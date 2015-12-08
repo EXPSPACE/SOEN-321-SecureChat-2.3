@@ -96,7 +96,7 @@ public class ChatCrypto {
 			KeyFactory kf = KeyFactory.getInstance("DH");
 			X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(otherDHPublicKey.getEncoded()); 
 			PublicKey pk = kf.generatePublic(x509Spec);
-			ka.doPhase(pk, true); //TODO: Test if I can just pass otherPHPublicKey without X509Spec
+			ka.doPhase(pk, true);
 			
 			//generate valid shared AES key
 			byte[] secret = ka.generateSecret();
@@ -166,7 +166,7 @@ public class ChatCrypto {
 		}
 	}
 	
-	//TODO set to unlock priv key with pass phrase from password text field?
+	//TODO set to unlock priv key with pass phrase from password text field
 	public void loadRSAPrivateKey(File file) {	
 		try {
             FileInputStream fileInputStream = new FileInputStream(file);
@@ -280,15 +280,17 @@ public class ChatCrypto {
 		}
 	}
 	
-	//TODO:	
-//	public static byte[] genRandomIV() {
-//		
-//	}
+	public static byte[] genRandomIV() {
+	      SecureRandom random = new SecureRandom();
+	      byte[] iv = new byte[16];
+	      random.nextBytes(iv);
+	      return iv;
+	}
 	
 	//forwards messages from one client to another on the server after both are authenticated
 	public static void decryptReEncryptPacket(ChatPacket senderPacket, ChatCrypto senderInfo, ChatCrypto recieverInfo) {
 		byte[] decryptedMsg = senderInfo.getDecryptedMsg(senderPacket.data, senderPacket.iv);
-		byte[] iv = new byte[16];//TODO generate new IV
+		byte[] iv = ChatCrypto.genRandomIV();
 		byte[] encryptedMsg = recieverInfo.getEncryptedMsg(decryptedMsg, iv);
 		senderPacket.data = encryptedMsg;
 		senderPacket.iv = iv;

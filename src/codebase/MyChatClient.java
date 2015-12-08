@@ -126,7 +126,7 @@ class MyChatClient extends ChatClient {
 			p.uid = curUser;
 			
 			//encrypt data to be sent
-			byte[] iv = new byte[16]; //TODO : Generate new iv
+			byte[] iv = ChatCrypto.genRandomIV();
 			
 			
 			p.data = clientCrypto.getEncryptedMsg(message,iv);
@@ -189,7 +189,7 @@ class MyChatClient extends ChatClient {
 					ChatPacket cp = new ChatPacket();
 					cp.request = ChatRequest.AUTH_REQ;
 					cp.uid = curUser;
-					byte[] iv = new byte[16]; //TODO: set to generate new random iv
+					byte[] iv = ChatCrypto.genRandomIV();
 					cp.data = clientCrypto.getEncryptedMsg(ChatCrypto.AUTH_CODE,iv);
 					cp.iv = iv;
 					SerializeNSend(cp);
