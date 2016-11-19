@@ -44,6 +44,12 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.security.cert.X509Certificate;
 
+/*
+ * Author: Sebastian Proctor-Shah 
+ * SID# 2964972
+ * Date: 4/12/2015
+ */
+
 import org.apache.commons.ssl.PKCS8Key;
 
 public class ChatCrypto {
